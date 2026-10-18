@@ -12,7 +12,7 @@ cd queue-lab
 python --version
 python app.py --db demo.sqlite3 enqueue welcome '{"message":"hello"}'
 python app.py --db demo.sqlite3 work
-python app.py --db demo.sqlite3 enqueue failure '{"demo_fail":true}' --max-attempts 2
+python app.py --db demo.sqlite3 enqueue failure '{"demo_fail":true}' --max-attempts 2 --retry-delay 0
 python app.py --db demo.sqlite3 work
 python app.py --db demo.sqlite3 work
 python app.py --db demo.sqlite3 list
@@ -26,6 +26,12 @@ Each `work` command processes at most one pending job. Payloads with `demo_fail:
 
 Run `python app.py --help` for available options.
 
+## Scheduled retries and replay
+
+`enqueue --retry-delay SECONDS` sets the initial delay (default 1 second, range 0–3600). A failed attempt becomes eligible after `min(3600, retry_delay × 2^(attempt-1))` seconds. The exponent is bounded at 12 for numerical safety. `work` processes only currently eligible jobs and returns null when none are due; it does not sleep or run a worker loop. `available_at` is a Unix timestamp; a value of 0 means immediately eligible or terminal. Keep invoking work from your own worker loop when needed.
+
+The quick-start failure example uses zero delay so both attempts can be demonstrated immediately. For a dead job, run `python app.py --db demo.sqlite3 replay JOB_ID`. Replay preserves the job ID, payload, key and retry policy, resets attempts, and makes the job eligible now. Non-dead or nonexistent jobs cannot be replayed. Listing includes retry policy and next eligibility time. Existing databases migrate automatically with an immediate eligibility timestamp and a one-second default retry delay.
+
 ## Development and verification
 
 ```bash
@@ -33,7 +39,7 @@ python -m unittest discover -s tests -v
 python -m compileall -q app.py tests
 ```
 
-Tests exercise behavior with temporary/local data. PufferFish's recording test uses only a loopback HTTP server. There is no build step or configured linter; compilation is a syntax check, not linting.
+Tests exercise temporary SQLite databases, clock-controlled retry eligibility and legacy database migration without sleeping. There is no build step or configured linter; compilation is a syntax check, not linting.
 
 ## Configuration
 
@@ -56,7 +62,7 @@ A single dependency-free module exposes importable core functions and a CLI entr
 
 ## Limitations
 
-This is a transactional demonstration handler, not a production distributed queue. There are no leases, delayed backoff, custom handlers or dashboard yet. Do not perform network side effects inside the transaction. SQLite database files stay local and are ignored by git.
+This is a transactional demonstration handler, not a production distributed queue. There are no leases, custom handlers or dashboard yet. Do not perform network side effects inside the transaction. SQLite database files stay local and are ignored by git.
 
 ## Running and deployment
 
@@ -74,3 +80,4 @@ Run locally from the repository using the commands above. No hosted deployment h
 Open an issue describing the observed behavior, expected result and a minimal synthetic example. Keep changes focused, include behavioral tests, run the checks above, and update this README when commands or capabilities change. Do not submit credentials or private input files.
 
 Implementation and synthetic examples are original to this repository. There are no third-party runtime dependencies or media assets. A redistribution license has not yet been selected; public visibility alone does not grant an open-source license.
+
