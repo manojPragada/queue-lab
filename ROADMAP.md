@@ -9,7 +9,8 @@
 ## Next
 
 - [x] Add scheduled retries, backoff and dead-letter replay
-- [ ] Add safe handler registration and worker lifecycle metrics
+- [x] Add queue snapshots and transactional job lifecycle events
+- [ ] Add safe handler registration, worker heartbeats and leases
 - [ ] Build queue dashboard with explicit state transitions
 
 ## Continuity
@@ -18,3 +19,6 @@ Initial foundation implemented and checked on 2026-10-17. Inspect current code a
 
 
 2026-10-18: Added persisted retry deadlines, bounded exponential backoff, dead-job replay and legacy SQLite migration. Nine tests pass with controlled timestamps and no sleeps. Next: handler boundaries and lifecycle metrics.
+
+
+2026-10-19: Added stats/events CLI commands, ready/delayed counts and durable lifecycle records retained across replay. Legacy jobs have no fabricated history. Next: explicit handler and worker lifecycle boundaries before the dashboard.

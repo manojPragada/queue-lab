@@ -1,7 +1,7 @@
 import unittest
 import tempfile
 from pathlib import Path
-from app import connect,enqueue,work,replay_dead
+from app import connect,enqueue,work,replay_dead,queue_stats,event_history
 class Tests(unittest.TestCase):
     def setUp(self):self.db=connect(':memory:')
     def tearDown(self):self.db.close()
@@ -51,3 +51,24 @@ class Tests(unittest.TestCase):
             with self.assertRaises(ValueError):enqueue(self.db,'bad',{},retry_delay=value)
         job=enqueue(self.db,'ok',{})
         with self.assertRaises(ValueError):replay_dead(self.db,job,now=1)
+
+
+    def test_lifecycle_history_survives_replay(self):
+        job=enqueue(self.db,'fail',{'demo_fail':True},1,now=1)
+        work(self.db,now=2);replay_dead(self.db,job,now=3);work(self.db,now=4)
+        self.assertEqual([e['kind'] for e in event_history(self.db,job)],['dead','replayed','dead','enqueued'])
+        self.assertEqual(queue_stats(self.db,now=5)['recorded_failed_attempts'],2)
+    def test_stats_distinguish_ready_and_delayed(self):
+        enqueue(self.db,'fail',{'demo_fail':True},retry_delay=10,now=1);work(self.db,now=1)
+        enqueue(self.db,'ok',{},now=2)
+        stats=queue_stats(self.db,now=2)
+        self.assertEqual((stats['pending'],stats['ready'],stats['delayed']),(2,1,1))
+        self.assertEqual(queue_stats(self.db,now=11)['ready'],2)
+    def test_idempotent_enqueue_does_not_duplicate_events(self):
+        job=enqueue(self.db,'ok',{},now=1);enqueue(self.db,'ok',{},now=2)
+        self.assertEqual(len(event_history(self.db,job)),1)
+        with self.assertRaises(ValueError):event_history(self.db,limit=0)
+    def test_legacy_jobs_do_not_get_fabricated_history(self):
+        self.db.execute('INSERT INTO jobs (key,payload,state,attempts,max_attempts) VALUES ("legacy","{}","completed",2,3)');self.db.commit()
+        stats=queue_stats(self.db,now=1)
+        self.assertEqual(stats['completed'],1);self.assertEqual(stats['recorded_events'],0)

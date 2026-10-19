@@ -32,6 +32,18 @@ Run `python app.py --help` for available options.
 
 The quick-start failure example uses zero delay so both attempts can be demonstrated immediately. For a dead job, run `python app.py --db demo.sqlite3 replay JOB_ID`. Replay preserves the job ID, payload, key and retry policy, resets attempts, and makes the job eligible now. Non-dead or nonexistent jobs cannot be replayed. Listing includes retry policy and next eligibility time. Existing databases migrate automatically with an immediate eligibility timestamp and a one-second default retry delay.
 
+## Queue snapshots and job history
+
+```bash
+python app.py --db demo.sqlite3 stats
+python app.py --db demo.sqlite3 events --limit 20
+python app.py --db demo.sqlite3 events --job-id 1
+```
+
+Stats distinguish ready and delayed pending jobs, current terminal states, current attempt counters, and recorded failures/events. Event rows are appended transactionally with enqueue, retry, completion, dead-letter and replay changes. They contain IDs, kinds, attempt numbers and Unix timestamps, never payloads. Replaying resets a job's current attempts but retains recorded failure history. `events` is newest-first by event ID, with a 1–1000 row limit.
+
+Existing jobs are not given invented past events during migration: recorded counts cover activity after this feature was installed. There is no retention pruning, worker heartbeat or distributed-worker monitoring yet. Event history can grow over time. Programmatic tests may inject `now`; real CLI operations use the system clock.
+
 ## Development and verification
 
 ```bash
@@ -80,4 +92,5 @@ Run locally from the repository using the commands above. No hosted deployment h
 Open an issue describing the observed behavior, expected result and a minimal synthetic example. Keep changes focused, include behavioral tests, run the checks above, and update this README when commands or capabilities change. Do not submit credentials or private input files.
 
 Implementation and synthetic examples are original to this repository. There are no third-party runtime dependencies or media assets. A redistribution license has not yet been selected; public visibility alone does not grant an open-source license.
+
 
