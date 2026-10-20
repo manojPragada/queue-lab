@@ -48,7 +48,7 @@ Existing jobs are not given invented past events during migration: recorded coun
 
 ```bash
 python -m unittest discover -s tests -v
-python -m compileall -q app.py tests
+python -m compileall -q app.py handlers.py tests
 ```
 
 Tests exercise temporary SQLite databases, clock-controlled retry eligibility and legacy database migration without sleeping. There is no build step or configured linter; compilation is a syntax check, not linting.
@@ -61,6 +61,7 @@ Configuration is provided through CLI arguments. No environment variables, `.env
 
 ```text
 app.py          CLI and core domain functions
+handlers.py     fixed allowlist of bounded local demo handlers
 tests/          behavioral unit tests
 ROADMAP.md      completed work and prioritized next steps
 .env.example    configuration notes
@@ -82,7 +83,7 @@ Use a new demo database for the example ID. The fixed registry in `handlers.py` 
 
 These bounded demo handlers execute within the existing single-worker SQLite transaction. This is not arbitrary plugin registration, external-job execution, worker leasing or crash recovery. Do not put network calls or long-running work inside this transaction; leases/heartbeats remain next.
 
-A single dependency-free module exposes importable core functions and a CLI entry point. Filesystem and network access occur only when the corresponding commands run. This small foundation will be split into a package, integrations and UI as those features arrive; see the roadmap.
+The dependency-free CLI in app.py owns SQLite state, retry scheduling, events and result inspection. handlers.py defines the fixed local handler allowlist. There are no network calls or provider integrations. A package and UI remain future work; see the roadmap.
 
 ## Limitations
 
