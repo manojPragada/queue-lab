@@ -70,6 +70,18 @@ Queue examples are the self-contained commands above.
 
 ## Architecture
 
+### Allowlisted demo handlers and persisted results
+
+```bash
+python app.py --db demo.sqlite3 enqueue greeting '{"handler":"uppercase","text":"Hello town"}'
+python app.py --db demo.sqlite3 work
+python app.py --db demo.sqlite3 result 1
+```
+
+Use a new demo database for the example ID. The fixed registry in `handlers.py` permits only `noop` (default for legacy payloads) and `uppercase` (a string of at most 10,000 characters). Payloads never select imports, shell commands or executable code. Unknown handlers and invalid text use normal retry/dead-letter transitions with stable error codes. Results and last errors persist in SQLite; replay clears them without erasing event history. New columns migrate existing databases without inventing results for old completed jobs. Non-finite JSON numbers are refused on enqueue. Outputs can contain your supplied text: keep databases private.
+
+These bounded demo handlers execute within the existing single-worker SQLite transaction. This is not arbitrary plugin registration, external-job execution, worker leasing or crash recovery. Do not put network calls or long-running work inside this transaction; leases/heartbeats remain next.
+
 A single dependency-free module exposes importable core functions and a CLI entry point. Filesystem and network access occur only when the corresponding commands run. This small foundation will be split into a package, integrations and UI as those features arrive; see the roadmap.
 
 ## Limitations
@@ -92,5 +104,6 @@ Run locally from the repository using the commands above. No hosted deployment h
 Open an issue describing the observed behavior, expected result and a minimal synthetic example. Keep changes focused, include behavioral tests, run the checks above, and update this README when commands or capabilities change. Do not submit credentials or private input files.
 
 Implementation and synthetic examples are original to this repository. There are no third-party runtime dependencies or media assets. A redistribution license has not yet been selected; public visibility alone does not grant an open-source license.
+
 
 

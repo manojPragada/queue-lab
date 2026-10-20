@@ -15,6 +15,8 @@
 
 ## Continuity
 
+2026-10-20: Added an explicit allowlist of bounded local handlers, persisted results/error codes, result CLI and additive database migration. Six tests cover execution, retries, replay clearing, invalid handlers and JSON numbers. Next: worker leases/heartbeats before allowing external or long-running handlers. No dashboard or distributed-worker guarantees yet.
+
 Initial foundation implemented and checked on 2026-10-17. Inspect current code and commits before continuing. Prioritize the first unchecked item and keep improvements small enough to verify. No visual dashboard has been implemented.
 
 
@@ -22,3 +24,4 @@ Initial foundation implemented and checked on 2026-10-17. Inspect current code a
 
 
 2026-10-19: Added stats/events CLI commands, ready/delayed counts and durable lifecycle records retained across replay. Legacy jobs have no fabricated history. Next: explicit handler and worker lifecycle boundaries before the dashboard.
+

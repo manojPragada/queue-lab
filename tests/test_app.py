@@ -72,3 +72,4 @@ class Tests(unittest.TestCase):
         self.db.execute('INSERT INTO jobs (key,payload,state,attempts,max_attempts) VALUES ("legacy","{}","completed",2,3)');self.db.commit()
         stats=queue_stats(self.db,now=1)
         self.assertEqual(stats['completed'],1);self.assertEqual(stats['recorded_events'],0)
+
