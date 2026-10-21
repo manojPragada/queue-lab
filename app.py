@@ -20,6 +20,10 @@ def connect(path):
             db.execute('ALTER TABLE jobs ADD COLUMN result_json TEXT')
         if 'last_error' not in columns:
             db.execute('ALTER TABLE jobs ADD COLUMN last_error TEXT')
+        if 'worker_id' not in columns:
+            db.execute('ALTER TABLE jobs ADD COLUMN worker_id TEXT')
+        if 'lease_until' not in columns:
+            db.execute('ALTER TABLE jobs ADD COLUMN lease_until REAL NOT NULL DEFAULT 0')
     with db:
         db.execute('CREATE TABLE IF NOT EXISTS job_events (id INTEGER PRIMARY KEY, job_id INTEGER NOT NULL, kind TEXT NOT NULL, attempt INTEGER NOT NULL, occurred_at REAL NOT NULL)')
     return db
@@ -55,28 +59,47 @@ def replay_dead(db, job_id, now=None):
         add_event(db,job_id,'replayed',0,timestamp)
     return {'id': job_id, 'state': 'pending', 'attempts': 0, 'available_at': timestamp}
 
-def work(db, now=None):
+def claim_job(db, worker_id, lease_seconds=30, now=None):
+    if not isinstance(worker_id,str) or not worker_id or len(worker_id)>100:raise ValueError('worker_id must be 1–100 characters')
+    nonnegative(lease_seconds,'lease_seconds')
+    if not 1 <= lease_seconds <= 3600:raise ValueError('lease_seconds must be from 1 to 3600')
     timestamp = nonnegative(time.time() if now is None else now, 'now')
-    # Entire demo handler is transactional. Not for long-running external jobs.
     with db:
         db.execute('BEGIN IMMEDIATE')
-        row=db.execute('SELECT * FROM jobs WHERE state="pending" AND available_at<=? ORDER BY available_at,id LIMIT 1',(timestamp,)).fetchone()
+        row=db.execute('SELECT * FROM jobs WHERE (state="pending" AND available_at<=?) OR (state="running" AND lease_until<=?) ORDER BY CASE state WHEN "running" THEN 0 ELSE 1 END,available_at,id LIMIT 1',(timestamp,timestamp)).fetchone()
         if not row:return None
-        payload=json.loads(row['payload']);attempt=row['attempts']+1
-        result = None
-        error = None
-        try:
-            result = execute(payload)
-        except HandlerFailure as exc:
-            error = str(exc)
-        fail = error is not None
-        state=('dead' if attempt>=row['max_attempts'] else 'pending') if fail else 'completed'
-        ready = timestamp + min(3600, row['retry_delay'] * 2 ** min(attempt-1, 12)) if fail and state == 'pending' else 0
-        db.execute('UPDATE jobs SET attempts=?,state=?,available_at=? WHERE id=?',(attempt,state,ready,row['id']))
-        db.execute('UPDATE jobs SET result_json=?,last_error=? WHERE id=?',
-                   (json.dumps(result, allow_nan=False) if not fail else None, error, row['id']))
-        add_event(db,row['id'],'retry_scheduled' if state=='pending' else state,attempt,timestamp)
-        return {'id':row['id'],'attempts':attempt,'state':state,'available_at':ready}
+        if row['state']=='running':add_event(db,row['id'],'lease_expired',row['attempts'],timestamp)
+        attempt=row['attempts']+1;lease_until=timestamp+lease_seconds
+        db.execute('UPDATE jobs SET state="running",attempts=?,worker_id=?,lease_until=? WHERE id=?',(attempt,worker_id,lease_until,row['id']))
+        add_event(db,row['id'],'claimed',attempt,timestamp)
+        return {'id':row['id'],'payload':json.loads(row['payload']),'attempts':attempt,'lease_until':lease_until}
+
+def heartbeat(db, job_id, worker_id, lease_seconds=30, now=None):
+    timestamp=nonnegative(time.time() if now is None else now,'now');nonnegative(lease_seconds,'lease_seconds')
+    if not 1<=lease_seconds<=3600:raise ValueError('lease_seconds must be from 1 to 3600')
+    with db:
+        row=db.execute('SELECT state,worker_id,lease_until,attempts FROM jobs WHERE id=?',(job_id,)).fetchone()
+        if row is None or row['state']!='running' or row['worker_id']!=worker_id or row['lease_until']<=timestamp:raise ValueError('Active lease not found for worker')
+        lease_until=timestamp+lease_seconds;db.execute('UPDATE jobs SET lease_until=? WHERE id=?',(lease_until,job_id));add_event(db,job_id,'heartbeat',row['attempts'],timestamp)
+    return {'id':job_id,'lease_until':lease_until}
+
+def finish_job(db, claim, worker_id, result=None, error=None, now=None):
+    timestamp=nonnegative(time.time() if now is None else now,'now')
+    with db:
+        db.execute('BEGIN IMMEDIATE');row=db.execute('SELECT * FROM jobs WHERE id=?',(claim['id'],)).fetchone()
+        if row is None or row['state']!='running' or row['worker_id']!=worker_id or row['lease_until']<=timestamp:raise ValueError('Job lease is no longer owned by worker')
+        fail=error is not None;state=('dead' if row['attempts']>=row['max_attempts'] else 'pending') if fail else 'completed'
+        ready=timestamp+min(3600,row['retry_delay']*2**min(row['attempts']-1,12)) if fail and state=='pending' else 0
+        db.execute('UPDATE jobs SET state=?,available_at=?,result_json=?,last_error=?,worker_id=NULL,lease_until=0 WHERE id=?',(state,ready,json.dumps(result,allow_nan=False) if not fail else None,error,row['id']))
+        add_event(db,row['id'],'retry_scheduled' if state=='pending' else state,row['attempts'],timestamp)
+    return {'id':row['id'],'attempts':row['attempts'],'state':state,'available_at':ready}
+
+def work(db, now=None, worker_id='local-worker'):
+    claim=claim_job(db,worker_id,30,now)
+    if claim is None:return None
+    try:result=execute(claim['payload']);error=None
+    except HandlerFailure as exc:result=None;error=str(exc)
+    return finish_job(db,claim,worker_id,result,error,now)
 
 def add_event(db, job_id, kind, attempt, timestamp):
     db.execute('INSERT INTO job_events (job_id,kind,attempt,occurred_at) VALUES (?,?,?,?)', (job_id,kind,attempt,timestamp))
@@ -97,6 +120,7 @@ def queue_stats(db, now=None):
         COALESCE(SUM(state='pending'),0) AS pending,
         COALESCE(SUM(state='completed'),0) AS completed,
         COALESCE(SUM(state='dead'),0) AS dead,
+        COALESCE(SUM(state='running'),0) AS running,
         COALESCE(SUM(state='pending' AND available_at<=?),0) AS ready,
         COALESCE(SUM(state='pending' AND available_at>?),0) AS delayed,
         COALESCE(SUM(attempts),0) AS current_attempts,

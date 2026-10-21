@@ -10,10 +10,12 @@
 
 - [x] Add scheduled retries, backoff and dead-letter replay
 - [x] Add queue snapshots and transactional job lifecycle events
-- [ ] Add safe handler registration, worker heartbeats and leases
+- [x] Add safe handler registration, worker heartbeats and leases
 - [ ] Build queue dashboard with explicit state transitions
 
 ## Continuity
+
+2026-10-21: Added durable worker ownership, bounded leases, heartbeats and deterministic recovery of expired claims. The built-in worker now executes outside the claim transaction and finalizes only while it owns the job. Delivery remains at-least-once. Next: expose these state transitions in the local dashboard.
 
 2026-10-20: Added an explicit allowlist of bounded local handlers, persisted results/error codes, result CLI and additive database migration. Six tests cover execution, retries, replay clearing, invalid handlers and JSON numbers. Next: worker leases/heartbeats before allowing external or long-running handlers. No dashboard or distributed-worker guarantees yet.
 

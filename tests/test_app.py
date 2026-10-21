@@ -1,7 +1,7 @@
 import unittest
 import tempfile
 from pathlib import Path
-from app import connect,enqueue,work,replay_dead,queue_stats,event_history
+from app import connect,enqueue,work,replay_dead,queue_stats,event_history,claim_job,heartbeat,finish_job
 class Tests(unittest.TestCase):
     def setUp(self):self.db=connect(':memory:')
     def tearDown(self):self.db.close()
@@ -56,7 +56,7 @@ class Tests(unittest.TestCase):
     def test_lifecycle_history_survives_replay(self):
         job=enqueue(self.db,'fail',{'demo_fail':True},1,now=1)
         work(self.db,now=2);replay_dead(self.db,job,now=3);work(self.db,now=4)
-        self.assertEqual([e['kind'] for e in event_history(self.db,job)],['dead','replayed','dead','enqueued'])
+        self.assertEqual([e['kind'] for e in event_history(self.db,job)],['dead','claimed','replayed','dead','claimed','enqueued'])
         self.assertEqual(queue_stats(self.db,now=5)['recorded_failed_attempts'],2)
     def test_stats_distinguish_ready_and_delayed(self):
         enqueue(self.db,'fail',{'demo_fail':True},retry_delay=10,now=1);work(self.db,now=1)
@@ -72,4 +72,17 @@ class Tests(unittest.TestCase):
         self.db.execute('INSERT INTO jobs (key,payload,state,attempts,max_attempts) VALUES ("legacy","{}","completed",2,3)');self.db.commit()
         stats=queue_stats(self.db,now=1)
         self.assertEqual(stats['completed'],1);self.assertEqual(stats['recorded_events'],0)
+
+    def test_worker_lease_heartbeat_and_completion(self):
+        job=enqueue(self.db,'leased',{'handler':'uppercase','text':'hello'},now=1)
+        claim=claim_job(self.db,'worker-a',10,now=2);self.assertEqual((claim['id'],claim['lease_until']),(job,12))
+        self.assertIsNone(claim_job(self.db,'worker-b',10,now=3));self.assertEqual(heartbeat(self.db,job,'worker-a',10,now=4)['lease_until'],14)
+        self.assertEqual(finish_job(self.db,claim,'worker-a',{'text':'HELLO'},now=5)['state'],'completed')
+        self.assertEqual([event['kind'] for event in event_history(self.db,job)],['completed','heartbeat','claimed','enqueued'])
+
+    def test_expired_lease_is_recovered_by_another_worker(self):
+        job=enqueue(self.db,'recover',{},max_attempts=2,now=1);claim_job(self.db,'gone',5,now=2)
+        recovered=claim_job(self.db,'replacement',5,now=7);self.assertEqual((recovered['id'],recovered['attempts']),(job,2))
+        with self.assertRaises(ValueError):heartbeat(self.db,job,'gone',now=7)
+        self.assertIn('lease_expired',[event['kind'] for event in event_history(self.db,job)])
 

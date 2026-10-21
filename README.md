@@ -44,6 +44,12 @@ Stats distinguish ready and delayed pending jobs, current terminal states, curre
 
 Existing jobs are not given invented past events during migration: recorded counts cover activity after this feature was installed. There is no retention pruning, worker heartbeat or distributed-worker monitoring yet. Event history can grow over time. Programmatic tests may inject `now`; real CLI operations use the system clock.
 
+## Worker leases and crash recovery
+
+Each built-in `work` call claims one ready job as `running` under a 30-second `local-worker` lease, executes the allowlisted handler outside the claim transaction, then finalizes only while it still owns the claim. The importable `claim_job`, `heartbeat`, and `finish_job` functions support explicit worker identities and 1–3600 second leases. An expired claim is recovered by the next worker, recorded as `lease_expired`, and counts as another attempt.
+
+This provides bounded crash recovery, not exactly-once execution: a handler may finish its side effect just before a worker disappears, then run again after lease expiry. Handlers must remain idempotent. This version has no continuously running worker process or dashboard.
+
 ## Development and verification
 
 ```bash
@@ -87,7 +93,7 @@ The dependency-free CLI in app.py owns SQLite state, retry scheduling, events an
 
 ## Limitations
 
-This is a transactional demonstration handler, not a production distributed queue. There are no leases, custom handlers or dashboard yet. Do not perform network side effects inside the transaction. SQLite database files stay local and are ignored by git.
+This is an at-least-once demonstration queue, not a production distributed system. There are no custom handlers, worker process supervisor or dashboard yet. SQLite database files stay local and are ignored by git.
 
 ## Running and deployment
 
