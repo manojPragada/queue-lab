@@ -141,9 +141,16 @@ def event_history(db, job_id=None, limit=50):
 def main():
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--db',default='queue.sqlite3');sub=p.add_subparsers(dest='command',required=True)
     e=sub.add_parser('enqueue');e.add_argument('key');e.add_argument('payload');e.add_argument('--max-attempts',type=int,default=3);e.add_argument('--retry-delay',type=float,default=1)
-    sub.add_parser('work');sub.add_parser('list');r=sub.add_parser('replay');r.add_argument('job_id',type=int);sub.add_parser('stats');e=sub.add_parser('events');e.add_argument('--job-id',type=int);e.add_argument('--limit',type=int,default=50)
+    sub.add_parser('work');sub.add_parser('list');r=sub.add_parser('replay');r.add_argument('job_id',type=int);sub.add_parser('stats');e=sub.add_parser('events');e.add_argument('--job-id',type=int);e.add_argument('--limit',type=int,default=50);d=sub.add_parser('dashboard');d.add_argument('--port',type=int,default=8765)
     r=sub.add_parser('result');r.add_argument('job_id',type=int);a=p.parse_args()
     try:
+        if a.command=='dashboard':
+            from dashboard import create_dashboard
+            with create_dashboard(a.db,a.port) as server:
+                print(f'Dashboard listening on http://127.0.0.1:{server.server_port}',flush=True)
+                try:server.serve_forever()
+                except KeyboardInterrupt:pass
+            return 0
         db=connect(a.db)
         try:
             if a.command=='enqueue':result={'id':enqueue(db,a.key,json.loads(a.payload),a.max_attempts,a.retry_delay)}

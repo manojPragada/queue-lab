@@ -2,7 +2,7 @@
 
 Explore a durable SQLite queue with idempotency keys, retries and dead-letter states.
 
-**Status:** runnable CLI foundation. No hosted demo or dashboard is available yet. Examples use synthetic offline data. Python 3.10+; standard library only. Validated with Python 3.12.
+**Status:** runnable CLI and local read-only dashboard. No hosted demo is available. Examples use synthetic offline data. Python 3.10+; standard library only. Validated with Python 3.12.
 
 ## Quick start
 
@@ -26,6 +26,14 @@ Each `work` command processes at most one pending job. Payloads with `demo_fail:
 
 Run `python app.py --help` for available options.
 
+## Local queue dashboard
+
+```bash
+python app.py --db demo.sqlite3 dashboard --port 8765
+```
+
+Open http://127.0.0.1:8765. The responsive dashboard shows queue-state totals, up to 100 recent jobs and 50 recent lifecycle transitions. It binds only to IPv4 loopback, makes no external requests and never exposes job payloads or results. It is deliberately read-only; keep using the CLI for mutations. Stop it with Ctrl+C.
+
 ## Scheduled retries and replay
 
 `enqueue --retry-delay SECONDS` sets the initial delay (default 1 second, range 0–3600). A failed attempt becomes eligible after `min(3600, retry_delay × 2^(attempt-1))` seconds. The exponent is bounded at 12 for numerical safety. `work` processes only currently eligible jobs and returns null when none are due; it does not sleep or run a worker loop. `available_at` is a Unix timestamp; a value of 0 means immediately eligible or terminal. Keep invoking work from your own worker loop when needed.
@@ -48,13 +56,13 @@ Existing jobs are not given invented past events during migration: recorded coun
 
 Each built-in `work` call claims one ready job as `running` under a 30-second `local-worker` lease, executes the allowlisted handler outside the claim transaction, then finalizes only while it still owns the claim. The importable `claim_job`, `heartbeat`, and `finish_job` functions support explicit worker identities and 1–3600 second leases. An expired claim is recovered by the next worker, recorded as `lease_expired`, and counts as another attempt.
 
-This provides bounded crash recovery, not exactly-once execution: a handler may finish its side effect just before a worker disappears, then run again after lease expiry. Handlers must remain idempotent. This version has no continuously running worker process or dashboard.
+This provides bounded crash recovery, not exactly-once execution: a handler may finish its side effect just before a worker disappears, then run again after lease expiry. Handlers must remain idempotent. This version has no continuously running worker process; the dashboard observes state but does not run workers.
 
 ## Development and verification
 
 ```bash
 python -m unittest discover -s tests -v
-python -m compileall -q app.py handlers.py tests
+python -m compileall -q app.py dashboard.py handlers.py tests
 ```
 
 Tests exercise temporary SQLite databases, clock-controlled retry eligibility and legacy database migration without sleeping. There is no build step or configured linter; compilation is a syntax check, not linting.
@@ -68,6 +76,8 @@ Configuration is provided through CLI arguments. No environment variables, `.env
 ```text
 app.py          CLI and core domain functions
 handlers.py     fixed allowlist of bounded local demo handlers
+dashboard.py    loopback dashboard server and bounded snapshot
+dashboard/      dependency-free browser interface
 tests/          behavioral unit tests
 ROADMAP.md      completed work and prioritized next steps
 .env.example    configuration notes
@@ -93,7 +103,7 @@ The dependency-free CLI in app.py owns SQLite state, retry scheduling, events an
 
 ## Limitations
 
-This is an at-least-once demonstration queue, not a production distributed system. There are no custom handlers, worker process supervisor or dashboard yet. SQLite database files stay local and are ignored by git.
+This is an at-least-once demonstration queue, not a production distributed system. There are no custom handlers, worker process supervisor or dashboard mutation controls. SQLite database files stay local and are ignored by git.
 
 ## Running and deployment
 

@@ -11,9 +11,12 @@
 - [x] Add scheduled retries, backoff and dead-letter replay
 - [x] Add queue snapshots and transactional job lifecycle events
 - [x] Add safe handler registration, worker heartbeats and leases
-- [ ] Build queue dashboard with explicit state transitions
+- [x] Build read-only queue dashboard with explicit state transitions
+- [ ] Add authenticated local dashboard controls
 
 ## Continuity
+
+2026-10-22: Added a polished loopback-only dashboard for bounded job summaries, queue metrics and the latest lifecycle transitions. Payloads/results are never exposed and the interface is read-only. Next: carefully scoped local controls with confirmation and CSRF protection.
 
 2026-10-21: Added durable worker ownership, bounded leases, heartbeats and deterministic recovery of expired claims. The built-in worker now executes outside the claim transaction and finalizes only while it owns the job. Delivery remains at-least-once. Next: expose these state transitions in the local dashboard.
 
