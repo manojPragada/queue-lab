@@ -2,7 +2,7 @@
 
 Explore a durable SQLite queue with idempotency keys, retries and dead-letter states.
 
-**Status:** runnable CLI and local read-only dashboard. No hosted demo is available. Examples use synthetic offline data. Python 3.10+; standard library only. Validated with Python 3.12.
+**Status:** runnable CLI and local dashboard with one token-gated dead-letter action. No hosted demo is available. Examples use synthetic offline data. Python 3.10+; standard library only. Validated with Python 3.12.
 
 ## Quick start
 
@@ -32,7 +32,7 @@ Run `python app.py --help` for available options.
 python app.py --db demo.sqlite3 dashboard --port 8765
 ```
 
-Open http://127.0.0.1:8765. The responsive dashboard shows queue-state totals, up to 100 recent jobs and 50 recent lifecycle transitions. It binds only to IPv4 loopback, makes no external requests and never exposes job payloads or results. It is deliberately read-only; keep using the CLI for mutations. Stop it with Ctrl+C.
+Open http://127.0.0.1:8765. The responsive dashboard shows queue-state totals, up to 100 recent jobs and 50 recent lifecycle transitions. It binds only to IPv4 loopback, makes no external requests and never exposes job payloads or results. The process prints an ephemeral session token: paste it into the page only when you need to replay a dead job, then confirm the specific job. The token is kept only in page memory, and all other mutations remain CLI-only. Loopback binding and a bearer token are development safeguards, not production authentication. Stop with Ctrl+C.
 
 ## Scheduled retries and replay
 
@@ -103,7 +103,7 @@ The dependency-free CLI in app.py owns SQLite state, retry scheduling, events an
 
 ## Limitations
 
-This is an at-least-once demonstration queue, not a production distributed system. There are no custom handlers, worker process supervisor or dashboard mutation controls. SQLite database files stay local and are ignored by git.
+This is an at-least-once demonstration queue, not a production distributed system. There is no worker process supervisor; the only dashboard mutation is confirmed, token-gated dead-letter replay. SQLite database files stay local and are ignored by git.
 
 ## Running and deployment
 

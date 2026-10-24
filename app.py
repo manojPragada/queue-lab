@@ -147,7 +147,7 @@ def main():
         if a.command=='dashboard':
             from dashboard import create_dashboard
             with create_dashboard(a.db,a.port) as server:
-                print(f'Dashboard listening on http://127.0.0.1:{server.server_port}',flush=True)
+                print(f'Dashboard listening on http://127.0.0.1:{server.server_port}\nSession control token: {server.control_token}',flush=True)
                 try:server.serve_forever()
                 except KeyboardInterrupt:pass
             return 0

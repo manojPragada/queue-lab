@@ -12,9 +12,12 @@
 - [x] Add queue snapshots and transactional job lifecycle events
 - [x] Add safe handler registration, worker heartbeats and leases
 - [x] Build read-only queue dashboard with explicit state transitions
-- [ ] Add authenticated local dashboard controls
+- [x] Add token-gated dead-letter replay control with confirmation
+- [ ] Add coordinated worker lifecycle controls
 
 ## Continuity
+
+2026-10-24: Added one deliberately narrow mutation: confirmed dead-letter replay gated by an ephemeral session token printed only to the local terminal. Payloads remain hidden; the token is not stored by the page. Next: coordinated worker pause/drain controls with explicit ownership semantics.
 
 2026-10-22: Added a polished loopback-only dashboard for bounded job summaries, queue metrics and the latest lifecycle transitions. Payloads/results are never exposed and the interface is read-only. Next: carefully scoped local controls with confirmation and CSRF protection.
 
