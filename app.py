@@ -26,7 +26,17 @@ def connect(path):
             db.execute('ALTER TABLE jobs ADD COLUMN lease_until REAL NOT NULL DEFAULT 0')
     with db:
         db.execute('CREATE TABLE IF NOT EXISTS job_events (id INTEGER PRIMARY KEY, job_id INTEGER NOT NULL, kind TEXT NOT NULL, attempt INTEGER NOT NULL, occurred_at REAL NOT NULL)')
+        db.execute('CREATE TABLE IF NOT EXISTS queue_control (id INTEGER PRIMARY KEY CHECK(id=1), paused INTEGER NOT NULL CHECK(paused IN (0,1)))')
+        db.execute('INSERT OR IGNORE INTO queue_control (id,paused) VALUES (1,0)')
     return db
+
+def queue_paused(db):
+    return bool(db.execute('SELECT paused FROM queue_control WHERE id=1').fetchone()['paused'])
+
+def set_queue_paused(db, paused):
+    if type(paused) is not bool:raise ValueError('paused must be a boolean')
+    with db:db.execute('UPDATE queue_control SET paused=? WHERE id=1',(int(paused),))
+    return {'paused':paused}
 
 def nonnegative(value, name):
     if type(value) not in (int, float) or not math.isfinite(value) or value < 0:
@@ -66,6 +76,7 @@ def claim_job(db, worker_id, lease_seconds=30, now=None):
     timestamp = nonnegative(time.time() if now is None else now, 'now')
     with db:
         db.execute('BEGIN IMMEDIATE')
+        if queue_paused(db):return None
         row=db.execute('SELECT * FROM jobs WHERE (state="pending" AND available_at<=?) OR (state="running" AND lease_until<=?) ORDER BY CASE state WHEN "running" THEN 0 ELSE 1 END,available_at,id LIMIT 1',(timestamp,timestamp)).fetchone()
         if not row:return None
         if row['state']=='running':add_event(db,row['id'],'lease_expired',row['attempts'],timestamp)
@@ -141,7 +152,7 @@ def event_history(db, job_id=None, limit=50):
 def main():
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--db',default='queue.sqlite3');sub=p.add_subparsers(dest='command',required=True)
     e=sub.add_parser('enqueue');e.add_argument('key');e.add_argument('payload');e.add_argument('--max-attempts',type=int,default=3);e.add_argument('--retry-delay',type=float,default=1)
-    sub.add_parser('work');sub.add_parser('list');r=sub.add_parser('replay');r.add_argument('job_id',type=int);sub.add_parser('stats');e=sub.add_parser('events');e.add_argument('--job-id',type=int);e.add_argument('--limit',type=int,default=50);d=sub.add_parser('dashboard');d.add_argument('--port',type=int,default=8765)
+    sub.add_parser('work');sub.add_parser('list');r=sub.add_parser('replay');r.add_argument('job_id',type=int);sub.add_parser('stats');sub.add_parser('pause');sub.add_parser('resume');e=sub.add_parser('events');e.add_argument('--job-id',type=int);e.add_argument('--limit',type=int,default=50);d=sub.add_parser('dashboard');d.add_argument('--port',type=int,default=8765)
     r=sub.add_parser('result');r.add_argument('job_id',type=int);a=p.parse_args()
     try:
         if a.command=='dashboard':
@@ -157,6 +168,8 @@ def main():
             elif a.command=='work':result=work(db)
             elif a.command=='replay':result=replay_dead(db,a.job_id)
             elif a.command=='stats':result=queue_stats(db)
+            elif a.command=='pause':result=set_queue_paused(db,True)
+            elif a.command=='resume':result=set_queue_paused(db,False)
             elif a.command=='events':result=event_history(db,a.job_id,a.limit)
             elif a.command=='result':result=job_result(db,a.job_id)
             else:result=[dict(row) for row in db.execute('SELECT id,key,state,attempts,max_attempts,available_at,retry_delay FROM jobs ORDER BY id')]

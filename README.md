@@ -26,6 +26,8 @@ Each `work` command processes at most one pending job. Payloads with `demo_fail:
 
 Run `python app.py --help` for available options.
 
+Use `python app.py --db queue.sqlite3 pause` to atomically stop new claims and `resume` to allow them again. Already leased jobs are not interrupted. The same action is available in the loopback dashboard only with the ephemeral session token and an explicit browser confirmation; this is cooperative local coordination, not process supervision or cancellation.
+
 ## Local queue dashboard
 
 ```bash

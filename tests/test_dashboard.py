@@ -3,7 +3,7 @@ from pathlib import Path
 from threading import Thread
 from urllib.request import urlopen,Request
 from urllib.error import HTTPError
-from app import connect,enqueue,work,finish_job,claim_job
+from app import connect,enqueue,work,finish_job,claim_job,queue_paused
 from dashboard import create_dashboard,snapshot
 class DashboardTests(unittest.TestCase):
     def test_snapshot_excludes_payload_and_exposes_transitions(self):
@@ -16,6 +16,15 @@ class DashboardTests(unittest.TestCase):
             try:
                 with urlopen(f'http://127.0.0.1:{server.server_port}/') as response:self.assertIn(b'Queue Lab',response.read())
                 with urlopen(f'http://127.0.0.1:{server.server_port}/api/snapshot') as response:self.assertEqual(json.load(response)['stats']['jobs'],0)
+            finally:server.shutdown();server.server_close();thread.join()
+    def test_pause_control_blocks_new_claims_but_preserves_jobs(self):
+        with tempfile.TemporaryDirectory() as root:
+            path=Path(root)/'queue.sqlite3';db=connect(path);enqueue(db,'waiting',{'handler':'echo','value':'x'},now=1);db.close()
+            server=create_dashboard(path,0,control_token='test-token');thread=Thread(target=server.serve_forever,daemon=True);thread.start();url=f'http://127.0.0.1:{server.server_port}/api/control'
+            try:
+                request=Request(url,data=b'{"paused":true,"confirm":"PAUSE"}',method='POST',headers={'X-Queue-Token':'test-token','Content-Type':'application/json'})
+                with urlopen(request) as response:self.assertTrue(json.load(response)['paused'])
+                db=connect(path);self.assertTrue(queue_paused(db));self.assertIsNone(claim_job(db,'worker',now=2));db.close()
             finally:server.shutdown();server.server_close();thread.join()
     def test_replay_control_requires_token_and_confirmation(self):
         with tempfile.TemporaryDirectory() as root:

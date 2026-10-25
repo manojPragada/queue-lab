@@ -13,9 +13,12 @@
 - [x] Add safe handler registration, worker heartbeats and leases
 - [x] Build read-only queue dashboard with explicit state transitions
 - [x] Add token-gated dead-letter replay control with confirmation
-- [ ] Add coordinated worker lifecycle controls
+- [x] Add coordinated pause/resume controls for new claims
+- [ ] Add graceful drain status for active leases
 
 ## Continuity
+
+2026-10-25: Added durable queue pause/resume state, CLI commands and an ephemeral-token-gated dashboard control. Pausing atomically blocks new claims but never interrupts leased work. Next: explicit graceful-drain status for active leases.
 
 2026-10-24: Added one deliberately narrow mutation: confirmed dead-letter replay gated by an ephemeral session token printed only to the local terminal. Payloads remain hidden; the token is not stored by the page. Next: coordinated worker pause/drain controls with explicit ownership semantics.
 
