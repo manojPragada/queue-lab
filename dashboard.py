@@ -5,7 +5,7 @@ import secrets
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
-from app import connect,queue_stats,event_history,replay_dead,queue_paused,set_queue_paused
+from app import connect,queue_stats,event_history,replay_dead,queue_paused,set_queue_paused,drain_status
 
 ROOT=Path(__file__).with_name('dashboard')
 ASSETS={'/':('index.html','text/html; charset=utf-8'),'/app.js':('app.js','text/javascript; charset=utf-8'),'/style.css':('style.css','text/css; charset=utf-8')}
@@ -13,7 +13,7 @@ def snapshot(database):
     db=connect(database)
     try:
         jobs=[dict(row) for row in db.execute('SELECT id,key,state,attempts,max_attempts,available_at,worker_id,lease_until,last_error FROM jobs ORDER BY id DESC LIMIT 100')]
-        return {'stats':queue_stats(db),'control':{'paused':queue_paused(db)},'jobs':jobs,'events':event_history(db,limit=50)}
+        return {'stats':queue_stats(db),'control':drain_status(db),'jobs':jobs,'events':event_history(db,limit=50)}
     finally:db.close()
 def create_dashboard(database,port=8765,control_token=None):
     if type(port) is not int or not 0<=port<=65535:raise ValueError('Port must be from 0 to 65535')

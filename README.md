@@ -28,6 +28,8 @@ Run `python app.py --help` for available options.
 
 Use `python app.py --db queue.sqlite3 pause` to atomically stop new claims and `resume` to allow them again. Already leased jobs are not interrupted. The same action is available in the loopback dashboard only with the ephemeral session token and an explicit browser confirmation; this is cooperative local coordination, not process supervision or cancellation.
 
+After pausing, `python app.py --db queue.sqlite3 drain-status` reports active unexpired leases, their latest deadline and whether the queue is drained. Expired leases no longer count as active. This is observation only: it does not wait, signal workers or cancel jobs.
+
 ## Local queue dashboard
 
 ```bash

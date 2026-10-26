@@ -38,6 +38,10 @@ def set_queue_paused(db, paused):
     with db:db.execute('UPDATE queue_control SET paused=? WHERE id=1',(int(paused),))
     return {'paused':paused}
 
+def drain_status(db, now=None):
+    timestamp=nonnegative(time.time() if now is None else now,'now');row=db.execute("SELECT COUNT(*) AS running,MAX(lease_until) AS latest FROM jobs WHERE state='running' AND lease_until>?",(timestamp,)).fetchone();running=row['running']
+    return {'paused':queue_paused(db),'running_leases':running,'latest_lease_until':row['latest'] if running else None,'drained':queue_paused(db) and running==0}
+
 def nonnegative(value, name):
     if type(value) not in (int, float) or not math.isfinite(value) or value < 0:
         raise ValueError(name + ' must be finite and non-negative')
@@ -152,7 +156,7 @@ def event_history(db, job_id=None, limit=50):
 def main():
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--db',default='queue.sqlite3');sub=p.add_subparsers(dest='command',required=True)
     e=sub.add_parser('enqueue');e.add_argument('key');e.add_argument('payload');e.add_argument('--max-attempts',type=int,default=3);e.add_argument('--retry-delay',type=float,default=1)
-    sub.add_parser('work');sub.add_parser('list');r=sub.add_parser('replay');r.add_argument('job_id',type=int);sub.add_parser('stats');sub.add_parser('pause');sub.add_parser('resume');e=sub.add_parser('events');e.add_argument('--job-id',type=int);e.add_argument('--limit',type=int,default=50);d=sub.add_parser('dashboard');d.add_argument('--port',type=int,default=8765)
+    sub.add_parser('work');sub.add_parser('list');r=sub.add_parser('replay');r.add_argument('job_id',type=int);sub.add_parser('stats');sub.add_parser('pause');sub.add_parser('resume');sub.add_parser('drain-status');e=sub.add_parser('events');e.add_argument('--job-id',type=int);e.add_argument('--limit',type=int,default=50);d=sub.add_parser('dashboard');d.add_argument('--port',type=int,default=8765)
     r=sub.add_parser('result');r.add_argument('job_id',type=int);a=p.parse_args()
     try:
         if a.command=='dashboard':
@@ -170,6 +174,7 @@ def main():
             elif a.command=='stats':result=queue_stats(db)
             elif a.command=='pause':result=set_queue_paused(db,True)
             elif a.command=='resume':result=set_queue_paused(db,False)
+            elif a.command=='drain-status':result=drain_status(db)
             elif a.command=='events':result=event_history(db,a.job_id,a.limit)
             elif a.command=='result':result=job_result(db,a.job_id)
             else:result=[dict(row) for row in db.execute('SELECT id,key,state,attempts,max_attempts,available_at,retry_delay FROM jobs ORDER BY id')]

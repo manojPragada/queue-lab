@@ -1,7 +1,7 @@
 import unittest
 import tempfile
 from pathlib import Path
-from app import connect,enqueue,work,replay_dead,queue_stats,event_history,claim_job,heartbeat,finish_job
+from app import connect,enqueue,work,replay_dead,queue_stats,event_history,claim_job,heartbeat,finish_job,set_queue_paused,drain_status
 class Tests(unittest.TestCase):
     def setUp(self):self.db=connect(':memory:')
     def tearDown(self):self.db.close()
@@ -85,4 +85,9 @@ class Tests(unittest.TestCase):
         recovered=claim_job(self.db,'replacement',5,now=7);self.assertEqual((recovered['id'],recovered['attempts']),(job,2))
         with self.assertRaises(ValueError):heartbeat(self.db,job,'gone',now=7)
         self.assertIn('lease_expired',[event['kind'] for event in event_history(self.db,job)])
+
+    def test_drain_status_requires_pause_and_no_active_leases(self):
+        enqueue(self.db,'drain',{},now=1);claim_job(self.db,'worker',10,now=2);set_queue_paused(self.db,True)
+        self.assertEqual(drain_status(self.db,now=3),{'paused':True,'running_leases':1,'latest_lease_until':12,'drained':False})
+        self.assertTrue(drain_status(self.db,now=12)['drained'])
 

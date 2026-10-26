@@ -14,9 +14,11 @@
 - [x] Build read-only queue dashboard with explicit state transitions
 - [x] Add token-gated dead-letter replay control with confirmation
 - [x] Add coordinated pause/resume controls for new claims
-- [ ] Add graceful drain status for active leases
+- [x] Add graceful drain status for active leases
 
 ## Continuity
+
+2026-10-26: Added a read-only drain status reporting pause state, active unexpired leases, the latest lease deadline and whether the queue is fully drained. Available through CLI and dashboard snapshot API; it never cancels work. Next: explicit worker registration only if multi-process coordination becomes a goal.
 
 2026-10-25: Added durable queue pause/resume state, CLI commands and an ephemeral-token-gated dashboard control. Pausing atomically blocks new claims but never interrupts leased work. Next: explicit graceful-drain status for active leases.
 
