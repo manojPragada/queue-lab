@@ -22,6 +22,8 @@ Use `python3` if your system does not provide `python`. No package installation 
 
 ## Usage and behavior
 
+`python app.py --db queue.sqlite3 worker-leases` groups active unexpired leases by worker ID with counts and expiry bounds. It exposes no payloads, results, or errors and does not control workers.
+
 Each `work` command processes at most one pending job. Payloads with `demo_fail: true` fail deliberately; after the retry limit they enter `dead`. Other payloads complete without executing external work. Reusing an idempotency key returns the same job ID; differing payload or retry configuration is rejected.
 
 Run `python app.py --help` for available options.
