@@ -8,7 +8,7 @@ from dashboard import create_dashboard,snapshot
 class DashboardTests(unittest.TestCase):
     def test_snapshot_excludes_payload_and_exposes_transitions(self):
         with tempfile.TemporaryDirectory() as root:
-            path=Path(root)/'queue.sqlite3';db=connect(path);enqueue(db,'secret-job',{'token':'never expose'},now=1);work(db,now=2);db.close();data=snapshot(path)
+            path=Path(root)/'queue.sqlite3';db=connect(path);enqueue(db,'secret-job',{'token':'never expose'},now=1);work(db,now=2);db.close();data=snapshot(path);self.assertEqual(data['workers'],[])
             self.assertEqual(data['stats']['completed'],1);self.assertNotIn('payload',data['jobs'][0]);self.assertEqual(data['events'][0]['kind'],'completed')
     def test_loopback_dashboard_serves_assets_and_api(self):
         with tempfile.TemporaryDirectory() as root:

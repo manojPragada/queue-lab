@@ -18,6 +18,8 @@
 
 ## Continuity
 
+2026-10-28: Added payload-free active worker lease summaries to the dashboard snapshot API, matching the CLI view. Next: render a compact worker monitor in the dashboard.
+
 2026-10-27: Added read-only active-lease summaries grouped by worker ID, with next/last expiry and no payload exposure. Next: explicit worker registration only if durable multi-process identity becomes a goal.
 
 2026-10-26: Added a read-only drain status reporting pause state, active unexpired leases, the latest lease deadline and whether the queue is fully drained. Available through CLI and dashboard snapshot API; it never cancels work. Next: explicit worker registration only if multi-process coordination becomes a goal.
