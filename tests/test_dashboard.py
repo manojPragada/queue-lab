@@ -15,6 +15,7 @@ class DashboardTests(unittest.TestCase):
             server=create_dashboard(Path(root)/'queue.sqlite3',0);thread=Thread(target=server.serve_forever,daemon=True);thread.start()
             try:
                 with urlopen(f'http://127.0.0.1:{server.server_port}/') as response:self.assertIn(b'Queue Lab',response.read())
+                with urlopen(f'http://127.0.0.1:{server.server_port}/') as response:self.assertIn(b'Active worker leases',response.read())
                 with urlopen(f'http://127.0.0.1:{server.server_port}/api/snapshot') as response:self.assertEqual(json.load(response)['stats']['jobs'],0)
             finally:server.shutdown();server.server_close();thread.join()
     def test_pause_control_blocks_new_claims_but_preserves_jobs(self):
