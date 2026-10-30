@@ -18,6 +18,8 @@
 
 ## Continuity
 
+2026-10-30: Added server-computed next/last lease time remaining to the payload-free worker summary and rendered the next countdown in the dashboard. Next: explicit worker registration only if durable multi-process identity becomes a goal.
+
 2026-10-29: Added a responsive, payload-free active worker lease monitor with lease counts and local next-expiry times to the dashboard. Next: explicit worker registration only if durable multi-process identity becomes a goal.
 
 2026-10-28: Added payload-free active worker lease summaries to the dashboard snapshot API, matching the CLI view. Next: render a compact worker monitor in the dashboard.

@@ -43,7 +43,10 @@ def drain_status(db, now=None):
     return {'paused':queue_paused(db),'running_leases':running,'latest_lease_until':row['latest'] if running else None,'drained':queue_paused(db) and running==0}
 def worker_leases(db, now=None):
     timestamp=nonnegative(time.time() if now is None else now,'now')
-    return [dict(row) for row in db.execute("SELECT worker_id,COUNT(*) AS active_leases,MIN(lease_until) AS next_expiry,MAX(lease_until) AS last_expiry FROM jobs WHERE state='running' AND lease_until>? GROUP BY worker_id ORDER BY worker_id",(timestamp,))]
+    rows=[]
+    for row in db.execute("SELECT worker_id,COUNT(*) AS active_leases,MIN(lease_until) AS next_expiry,MAX(lease_until) AS last_expiry FROM jobs WHERE state='running' AND lease_until>? GROUP BY worker_id ORDER BY worker_id",(timestamp,)):
+        item=dict(row);item['next_expiry_in']=max(0,item['next_expiry']-timestamp);item['last_expiry_in']=max(0,item['last_expiry']-timestamp);rows.append(item)
+    return rows
 
 def nonnegative(value, name):
     if type(value) not in (int, float) or not math.isfinite(value) or value < 0:
