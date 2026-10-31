@@ -22,7 +22,7 @@ Use `python3` if your system does not provide `python`. No package installation 
 
 ## Usage and behavior
 
-The dashboard renders the same payload-free active worker lease summary as `worker-leases`, including lease counts, server-computed seconds remaining, and local next-expiry times; no worker control or registration is implied.
+The dashboard renders the same payload-free active worker lease summary as `worker-leases`, including lease counts, server-computed seconds remaining, and local next-expiry times. It refreshes every five seconds while visible and immediately on tab return, using a server snapshot timestamp; no worker control or registration is implied.
 
 `python app.py --db queue.sqlite3 worker-leases` groups active unexpired leases by worker ID with counts and expiry bounds. It exposes no payloads, results, or errors and does not control workers.
 

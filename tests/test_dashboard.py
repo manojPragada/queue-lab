@@ -9,7 +9,7 @@ class DashboardTests(unittest.TestCase):
     def test_snapshot_excludes_payload_and_exposes_transitions(self):
         with tempfile.TemporaryDirectory() as root:
             path=Path(root)/'queue.sqlite3';db=connect(path);enqueue(db,'secret-job',{'token':'never expose'},now=1);work(db,now=2);db.close();data=snapshot(path);self.assertEqual(data['workers'],[])
-            self.assertEqual(data['stats']['completed'],1);self.assertNotIn('payload',data['jobs'][0]);self.assertEqual(data['events'][0]['kind'],'completed')
+            self.assertIsInstance(data['observed_at'],float);self.assertEqual(data['stats']['completed'],1);self.assertNotIn('payload',data['jobs'][0]);self.assertEqual(data['events'][0]['kind'],'completed')
     def test_loopback_dashboard_serves_assets_and_api(self):
         with tempfile.TemporaryDirectory() as root:
             server=create_dashboard(Path(root)/'queue.sqlite3',0);thread=Thread(target=server.serve_forever,daemon=True);thread.start()

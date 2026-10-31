@@ -18,6 +18,8 @@
 
 ## Continuity
 
+2026-10-31: Added one shared server observation time to dashboard snapshots and visibility-aware five-second refreshes, keeping lease countdowns current without overlapping requests or polling hidden tabs. Next: explicit worker registration only if durable multi-process identity becomes a goal.
+
 2026-10-30: Added server-computed next/last lease time remaining to the payload-free worker summary and rendered the next countdown in the dashboard. Next: explicit worker registration only if durable multi-process identity becomes a goal.
 
 2026-10-29: Added a responsive, payload-free active worker lease monitor with lease counts and local next-expiry times to the dashboard. Next: explicit worker registration only if durable multi-process identity becomes a goal.
