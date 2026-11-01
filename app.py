@@ -44,7 +44,7 @@ def drain_status(db, now=None):
 def worker_leases(db, now=None):
     timestamp=nonnegative(time.time() if now is None else now,'now')
     rows=[]
-    for row in db.execute("SELECT worker_id,COUNT(*) AS active_leases,MIN(lease_until) AS next_expiry,MAX(lease_until) AS last_expiry FROM jobs WHERE state='running' AND lease_until>? GROUP BY worker_id ORDER BY worker_id",(timestamp,)):
+    for row in db.execute("SELECT worker_id,COUNT(*) AS active_leases,SUM(CASE WHEN lease_until<=? THEN 1 ELSE 0 END) AS expiring_soon,MIN(lease_until) AS next_expiry,MAX(lease_until) AS last_expiry FROM jobs WHERE state='running' AND lease_until>? GROUP BY worker_id ORDER BY worker_id",(timestamp+5,timestamp)):
         item=dict(row);item['next_expiry_in']=max(0,item['next_expiry']-timestamp);item['last_expiry_in']=max(0,item['last_expiry']-timestamp);rows.append(item)
     return rows
 
