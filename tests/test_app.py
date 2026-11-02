@@ -88,6 +88,6 @@ class Tests(unittest.TestCase):
 
     def test_drain_status_requires_pause_and_no_active_leases(self):
         enqueue(self.db,'drain',{},now=1);claim_job(self.db,'worker',10,now=2);set_queue_paused(self.db,True)
-        self.assertEqual(drain_status(self.db,now=3),{'paused':True,'running_leases':1,'latest_lease_until':12,'drained':False})
-        self.assertTrue(drain_status(self.db,now=12)['drained'])
+        self.assertEqual(drain_status(self.db,now=3),{'paused':True,'running_leases':1,'expired_reclaimable_leases':0,'latest_lease_until':12,'drained':False})
+        expired=drain_status(self.db,now=12);self.assertTrue(expired['drained']);self.assertEqual(expired['expired_reclaimable_leases'],1)
 
