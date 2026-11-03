@@ -18,6 +18,8 @@
 
 ## Continuity
 
+2026-11-03: Added an explicit recovery-pending flag to drain status whenever expired leases await deterministic reclaim. Drain semantics remain observational and no work is reclaimed or cancelled. Next: explicit worker registration only if durable multi-process identity becomes a goal.
+
 2026-11-02: Added a payload-free count of expired reclaimable leases to drain status, distinguishing a truly idle queue from one whose abandoned work awaits the next claim cycle. Observation still performs no reclaim. Next: explicit worker registration only if durable multi-process identity becomes a goal.
 
 2026-11-01: Added a payload-free count of active leases expiring within five seconds to each worker summary and dashboard card. The count uses the same server observation time as countdowns. Next: explicit worker registration only if durable multi-process identity becomes a goal.
