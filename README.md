@@ -34,6 +34,8 @@ Use `python app.py --db queue.sqlite3 pause` to atomically stop new claims and `
 
 After pausing, `python app.py --db queue.sqlite3 drain-status` reports active unexpired leases, their latest deadline, the number of expired leases available for deterministic reclaim, an explicit recovery-pending flag, and whether active work is drained. Expired leases no longer count as active. This is observation only: it does not wait, signal workers, reclaim leases or cancel jobs.
 
+The drain-status snapshot also exposes `fully_settled`, which becomes true only when the queue is paused with no active or expired-reclaimable leases.
+
 ## Local queue dashboard
 
 ```bash
