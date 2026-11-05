@@ -39,10 +39,10 @@ def set_queue_paused(db, paused):
     return {'paused':paused}
 
 def drain_status(db, now=None):
-    timestamp=nonnegative(time.time() if now is None else now,'now');row=db.execute("SELECT SUM(CASE WHEN lease_until>? THEN 1 ELSE 0 END) AS running,SUM(CASE WHEN lease_until<=? THEN 1 ELSE 0 END) AS expired,MAX(CASE WHEN lease_until>? THEN lease_until END) AS latest FROM jobs WHERE state='running'",(timestamp,timestamp,timestamp)).fetchone();running=row['running'] or 0
+    timestamp=nonnegative(time.time() if now is None else now,'now');row=db.execute("SELECT SUM(CASE WHEN lease_until>? THEN 1 ELSE 0 END) AS running,SUM(CASE WHEN lease_until<=? THEN 1 ELSE 0 END) AS expired,MAX(CASE WHEN lease_until>? THEN lease_until END) AS latest,MIN(CASE WHEN lease_until<=? THEN lease_until END) AS oldest_expired FROM jobs WHERE state='running'",(timestamp,timestamp,timestamp,timestamp)).fetchone();running=row['running'] or 0
     expired=row['expired'] or 0
     paused=queue_paused(db)
-    return {'paused':paused,'running_leases':running,'expired_reclaimable_leases':expired,'recovery_pending':expired>0,'latest_lease_until':row['latest'] if running else None,'drained':paused and running==0,'fully_settled':paused and running==0 and expired==0}
+    return {'paused':paused,'running_leases':running,'expired_reclaimable_leases':expired,'oldest_expired_for':timestamp-row['oldest_expired'] if expired else None,'recovery_pending':expired>0,'latest_lease_until':row['latest'] if running else None,'drained':paused and running==0,'fully_settled':paused and running==0 and expired==0}
 def worker_leases(db, now=None):
     timestamp=nonnegative(time.time() if now is None else now,'now')
     rows=[]

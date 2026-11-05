@@ -18,6 +18,8 @@
 
 ## Continuity
 
+2026-11-05: Added the age of the oldest expired reclaimable lease to drain status and rendered it in the dashboard, making stuck recovery visible without exposing payloads or mutating work. Next: explicit worker registration only if durable multi-process identity becomes a goal.
+
 2026-11-04: Added a stricter fully-settled drain signal that requires pause, zero active leases and zero expired leases awaiting recovery. Existing drained semantics continue to describe active work only. Next: explicit worker registration only if durable multi-process identity becomes a goal.
 
 2026-11-03: Added an explicit recovery-pending flag to drain status whenever expired leases await deterministic reclaim. Drain semantics remain observational and no work is reclaimed or cancelled. Next: explicit worker registration only if durable multi-process identity becomes a goal.
