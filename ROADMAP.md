@@ -18,6 +18,8 @@
 
 ## Continuity
 
+2026-11-08: Added tested ready/delayed pending-backlog counts to drain status and its dashboard copy, distinguishing operationally drained leases from work retained for resume without exposing payloads. Next: explicit worker registration only if durable multi-process identity becomes a goal.
+
 2026-11-07: Rendered the existing payload-free active drain ETA in the local dashboard while paused, keeping it explicitly observational and lease-deadline based. Next: explicit worker registration only if durable multi-process identity becomes a goal.
 
 2026-11-06: Added a payload-free active drain ETA while the queue is paused, based on the last current lease deadline. It remains observational and does not cancel, heartbeat or reclaim work. Next: render this estimate in the local dashboard before considering durable worker registration.
