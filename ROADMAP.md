@@ -18,6 +18,8 @@
 
 ## Continuity
 
+2026-11-09: Added a payload-free next-delayed-job ready timestamp and relative ETA to drain status, with dashboard copy that makes clear paused queues will not claim newly ready work. Next: explicit worker registration only if durable multi-process identity becomes a goal.
+
 2026-11-08: Added tested ready/delayed pending-backlog counts to drain status and its dashboard copy, distinguishing operationally drained leases from work retained for resume without exposing payloads. Next: explicit worker registration only if durable multi-process identity becomes a goal.
 
 2026-11-07: Rendered the existing payload-free active drain ETA in the local dashboard while paused, keeping it explicitly observational and lease-deadline based. Next: explicit worker registration only if durable multi-process identity becomes a goal.
