@@ -39,12 +39,12 @@ def set_queue_paused(db, paused):
     return {'paused':paused}
 
 def drain_status(db, now=None):
-    timestamp=nonnegative(time.time() if now is None else now,'now');row=db.execute("SELECT SUM(CASE WHEN lease_until>? THEN 1 ELSE 0 END) AS running,SUM(CASE WHEN lease_until<=? THEN 1 ELSE 0 END) AS expired,MAX(CASE WHEN lease_until>? THEN lease_until END) AS latest,MIN(CASE WHEN lease_until<=? THEN lease_until END) AS oldest_expired FROM jobs WHERE state='running'",(timestamp,timestamp,timestamp,timestamp)).fetchone();running=row['running'] or 0
+    timestamp=nonnegative(time.time() if now is None else now,'now');row=db.execute("SELECT SUM(CASE WHEN lease_until>? THEN 1 ELSE 0 END) AS running,SUM(CASE WHEN lease_until<=? THEN 1 ELSE 0 END) AS expired,COUNT(DISTINCT CASE WHEN lease_until<=? THEN worker_id END) AS expired_workers,MAX(CASE WHEN lease_until>? THEN lease_until END) AS latest,MIN(CASE WHEN lease_until<=? THEN lease_until END) AS oldest_expired FROM jobs WHERE state='running'",(timestamp,timestamp,timestamp,timestamp,timestamp)).fetchone();running=row['running'] or 0
     expired=row['expired'] or 0
     backlog=db.execute("SELECT SUM(CASE WHEN available_at<=? THEN 1 ELSE 0 END) AS ready,SUM(CASE WHEN available_at>? THEN 1 ELSE 0 END) AS delayed,MIN(CASE WHEN available_at>? THEN available_at END) AS next_delayed_at FROM jobs WHERE state='pending'",(timestamp,timestamp,timestamp)).fetchone()
     paused=queue_paused(db)
     next_delayed_at=backlog['next_delayed_at']
-    return {'paused':paused,'running_leases':running,'active_drain_eta':max(0,row['latest']-timestamp) if paused and running else None,'expired_reclaimable_leases':expired,'oldest_expired_for':timestamp-row['oldest_expired'] if expired else None,'recovery_pending':expired>0,'ready_backlog':backlog['ready'] or 0,'delayed_backlog':backlog['delayed'] or 0,'next_delayed_at':next_delayed_at,'next_delayed_in':max(0,next_delayed_at-timestamp) if next_delayed_at is not None else None,'latest_lease_until':row['latest'] if running else None,'drained':paused and running==0,'fully_settled':paused and running==0 and expired==0}
+    return {'paused':paused,'running_leases':running,'active_drain_eta':max(0,row['latest']-timestamp) if paused and running else None,'expired_reclaimable_leases':expired,'expired_worker_count':row['expired_workers'] or 0,'oldest_expired_for':timestamp-row['oldest_expired'] if expired else None,'recovery_pending':expired>0,'ready_backlog':backlog['ready'] or 0,'delayed_backlog':backlog['delayed'] or 0,'next_delayed_at':next_delayed_at,'next_delayed_in':max(0,next_delayed_at-timestamp) if next_delayed_at is not None else None,'latest_lease_until':row['latest'] if running else None,'drained':paused and running==0,'fully_settled':paused and running==0 and expired==0}
 def worker_leases(db, now=None):
     timestamp=nonnegative(time.time() if now is None else now,'now')
     rows=[]

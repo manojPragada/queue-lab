@@ -88,11 +88,16 @@ class Tests(unittest.TestCase):
 
     def test_drain_status_requires_pause_and_no_active_leases(self):
         enqueue(self.db,'drain',{},now=1);claim_job(self.db,'worker',10,now=2);set_queue_paused(self.db,True)
-        self.assertEqual(drain_status(self.db,now=3),{'paused':True,'running_leases':1,'active_drain_eta':9,'expired_reclaimable_leases':0,'oldest_expired_for':None,'recovery_pending':False,'ready_backlog':0,'delayed_backlog':0,'next_delayed_at':None,'next_delayed_in':None,'latest_lease_until':12,'drained':False,'fully_settled':False})
-        expired=drain_status(self.db,now=15);self.assertTrue(expired['drained']);self.assertIsNone(expired['active_drain_eta']);self.assertEqual((expired['expired_reclaimable_leases'],expired['oldest_expired_for']),(1,3));self.assertTrue(expired['recovery_pending']);self.assertFalse(expired['fully_settled'])
+        self.assertEqual(drain_status(self.db,now=3),{'paused':True,'running_leases':1,'active_drain_eta':9,'expired_reclaimable_leases':0,'expired_worker_count':0,'oldest_expired_for':None,'recovery_pending':False,'ready_backlog':0,'delayed_backlog':0,'next_delayed_at':None,'next_delayed_in':None,'latest_lease_until':12,'drained':False,'fully_settled':False})
+        expired=drain_status(self.db,now=15);self.assertTrue(expired['drained']);self.assertIsNone(expired['active_drain_eta']);self.assertEqual((expired['expired_reclaimable_leases'],expired['expired_worker_count'],expired['oldest_expired_for']),(1,1,3));self.assertTrue(expired['recovery_pending']);self.assertFalse(expired['fully_settled'])
         set_queue_paused(self.db,False);job=claim_job(self.db,'reclaimer',10,now=13);finish_job(self.db,job,'reclaimer',result={},now=14);set_queue_paused(self.db,True);self.assertTrue(drain_status(self.db,now=15)['fully_settled'])
     def test_drain_status_reports_ready_and_delayed_backlog(self):
         enqueue(self.db,'ready',{},now=1);enqueue(self.db,'delayed',{},retry_delay=10,now=1)
         claim=claim_job(self.db,'worker',10,now=2);finish_job(self.db,claim,'worker',error='retry',now=3);set_queue_paused(self.db,True)
         status=drain_status(self.db,now=3.5);self.assertEqual((status['ready_backlog'],status['delayed_backlog']),(1,1));self.assertEqual((status['next_delayed_at'],status['next_delayed_in']),(4,0.5));self.assertTrue(status['fully_settled'])
+
+    def test_drain_status_counts_distinct_workers_with_expired_leases(self):
+        for key in ('one','two','three'):enqueue(self.db,key,{},now=1)
+        claim_job(self.db,'worker-a',2,now=2);claim_job(self.db,'worker-a',2,now=2);claim_job(self.db,'worker-b',2,now=2)
+        self.assertEqual(drain_status(self.db,now=5)['expired_worker_count'],2)
 
