@@ -18,7 +18,7 @@ class DashboardTests(unittest.TestCase):
                 with urlopen(f'http://127.0.0.1:{server.server_port}/') as response:self.assertIn(b'Active worker leases',response.read())
                 with urlopen(f'http://127.0.0.1:{server.server_port}/app.js') as response:self.assertIn(b'Estimated final lease expiry',response.read())
                 with urlopen(f'http://127.0.0.1:{server.server_port}/app.js') as response:
-                    script=response.read();self.assertIn(b'remain queued',script);self.assertIn(b'paused queues do not claim it',script);self.assertIn(b'expired_worker_count',script)
+                    script=response.read();self.assertIn(b'remain queued',script);self.assertIn(b'paused queues do not claim it',script);self.assertIn(b'expired_worker_count',script);self.assertIn(b'active_worker_count',script)
                 with urlopen(f'http://127.0.0.1:{server.server_port}/api/snapshot') as response:self.assertEqual(json.load(response)['stats']['jobs'],0)
             finally:server.shutdown();server.server_close();thread.join()
     def test_pause_control_blocks_new_claims_but_preserves_jobs(self):

@@ -18,6 +18,8 @@
 
 ## Continuity
 
+2026-11-11: Added a payload-free distinct active-worker count to drain status and rendered it alongside active lease counts in the dashboard. Worker identifiers remain confined to the existing detailed lease cards. Next: explicit worker registration only if durable multi-process identity becomes a goal.
+
 2026-11-10: Added a payload-free distinct worker count for expired reclaimable leases and rendered it in the local dashboard, making the scope of abandoned work visible without exposing worker identities. Next: explicit worker registration only if durable multi-process identity becomes a goal.
 
 2026-11-09: Added a payload-free next-delayed-job ready timestamp and relative ETA to drain status, with dashboard copy that makes clear paused queues will not claim newly ready work. Next: explicit worker registration only if durable multi-process identity becomes a goal.
